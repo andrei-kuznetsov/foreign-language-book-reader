@@ -18,14 +18,16 @@
 package com.google.mlkit.codelab.translate.main
 
 import android.app.Application
+import android.os.Handler
 import android.util.LruCache
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.switchMap
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.codelab.translate.main.MainFragment.Companion.DESIRED_HEIGHT_CROP_PERCENT
+import com.google.mlkit.codelab.translate.main.MainFragment.Companion.DESIRED_WIDTH_CROP_PERCENT
 import com.google.mlkit.codelab.translate.util.Language
 import com.google.mlkit.codelab.translate.util.ResultOrError
 import com.google.mlkit.codelab.translate.util.SmoothedMutableLiveData
@@ -33,12 +35,10 @@ import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
-import com.google.mlkit.codelab.translate.main.MainFragment.Companion.DESIRED_HEIGHT_CROP_PERCENT
-import com.google.mlkit.codelab.translate.main.MainFragment.Companion.DESIRED_WIDTH_CROP_PERCENT
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    // TODO Instantiate LanguageIdentification
+    val sourceLang = MutableLiveData(Language("nl"))
     val targetLang = MutableLiveData<Language>()
     val sourceText = SmoothedMutableLiveData<String>(SMOOTHING_DURATION)
 
@@ -70,23 +70,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-    val sourceLang = sourceText.switchMap { text ->
-        val result = MutableLiveData<Language>()
-        // TODO  Call the language identification method and assigns the result if it is not
-        //  undefined (“und”)
-        result
-    }
-
     override fun onCleared() {
-        // TODO Shut down ML Kit clients.
+//        languageIdentifier.close()
+        translators.evictAll()
     }
 
     private fun translate(): Task<String> {
-        // TODO Take the source language value, target language value, and the source text and
-        //  perform the translation.
-        //  If the chosen target language model has not been downloaded to the device yet,
-        //  call downloadModelIfNeeded() and then proceed with the translation.
-        return Tasks.forResult("") // replace this with your code
+        val text = sourceText.value
+        val source = sourceLang.value
+        val target = targetLang.value
+        if (modelDownloading.value != false || translating.value != false) {
+            return Tasks.forCanceled()
+        }
+        if (source == null || target == null || text == null || text.isEmpty()) {
+            return Tasks.forResult("")
+        }
+        val sourceLangCode = TranslateLanguage.fromLanguageTag(source.code)
+        val targetLangCode = TranslateLanguage.fromLanguageTag(target.code)
+        if (sourceLangCode == null || targetLangCode == null) {
+            return Tasks.forCanceled()
+        }
+        val options = TranslatorOptions.Builder()
+            .setSourceLanguage(sourceLangCode)
+            .setTargetLanguage(targetLangCode)
+            .build()
+        val translator = translators[options]
+        modelDownloading.setValue(true)
+
+        // Register watchdog to unblock long running downloads
+        Handler().postDelayed({ modelDownloading.setValue(false) }, 15000)
+        modelDownloadTask = translator.downloadModelIfNeeded().addOnCompleteListener {
+            modelDownloading.setValue(false)
+        }
+        translating.value = true
+        return modelDownloadTask.onSuccessTask {
+            translator.translate(text)
+        }.addOnCompleteListener {
+            translating.value = false
+        }
     }
 
     // Gets a list of all available translation languages.
