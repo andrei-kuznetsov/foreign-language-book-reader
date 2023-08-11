@@ -41,9 +41,9 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import com.google.mlkit.codelab.translate.R
 import com.google.mlkit.codelab.translate.analyzer.TextAnalyzer
+import com.google.mlkit.codelab.translate.databinding.MainFragmentBinding
 import com.google.mlkit.codelab.translate.util.Language
 import com.google.mlkit.codelab.translate.util.ScopedExecutor
-import kotlinx.android.synthetic.main.main_fragment.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -79,6 +79,7 @@ class MainFragment : Fragment() {
     private var camera: Camera? = null
     private var imageAnalyzer: ImageAnalysis? = null
     private lateinit var container: ConstraintLayout
+    private lateinit var binding: MainFragmentBinding
     private lateinit var viewFinder: PreviewView
 
     /** Blocking camera operations are performed using this executor */
@@ -106,6 +107,7 @@ class MainFragment : Fragment() {
 
         container = view as ConstraintLayout
         viewFinder = container.findViewById(R.id.viewfinder)
+        binding = MainFragmentBinding.bind(view)
 
         // Initialize our background executor
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -132,9 +134,9 @@ class MainFragment : Fragment() {
             android.R.layout.simple_spinner_dropdown_item, viewModel.availableLanguages
         )
 
-        targetLangSelector.adapter = adapter
-        targetLangSelector.setSelection(adapter.getPosition(Language("en")))
-        targetLangSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        binding.targetLangSelector.adapter = adapter
+        binding.targetLangSelector.setSelection(adapter.getPosition(Language("en")))
+        binding.targetLangSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>,
                 view: View?,
@@ -147,42 +149,42 @@ class MainFragment : Fragment() {
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
-        viewModel.sourceLang.observe(viewLifecycleOwner, Observer { srcLang.text = it.displayName })
+        viewModel.sourceLang.observe(viewLifecycleOwner, Observer { binding.srcLang.text = it.displayName })
         viewModel.translatedText.observe(viewLifecycleOwner, Observer { resultOrError ->
             resultOrError?.let {
                 if (it.error != null) {
-                    translatedText.error = resultOrError.error?.localizedMessage
+                    binding.translatedText.error = resultOrError.error?.localizedMessage
                 } else {
-                    translatedText.text = resultOrError.result
+                    binding.translatedText.text = resultOrError.result
                 }
             }
         })
         viewModel.modelDownloading.observe(viewLifecycleOwner, Observer { isDownloading ->
-            progressBar.visibility = if (isDownloading) {
+            binding.progressBar.visibility = if (isDownloading) {
                 View.VISIBLE
             } else {
                 View.INVISIBLE
             }
-            progressText.visibility = progressBar.visibility
+            binding.progressText.visibility = binding.progressBar.visibility
         })
 
-        overlay.apply {
+        binding.overlay.apply {
             setZOrderOnTop(true)
             holder.setFormat(PixelFormat.TRANSPARENT)
             holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceChanged(
-                    holder: SurfaceHolder?,
+                    holder: SurfaceHolder,
                     format: Int,
                     width: Int,
                     height: Int
                 ) {
                 }
 
-                override fun surfaceDestroyed(holder: SurfaceHolder?) {
+                override fun surfaceDestroyed(holder: SurfaceHolder) {
                 }
 
-                override fun surfaceCreated(holder: SurfaceHolder?) {
-                    holder?.let { drawOverlay(it, DESIRED_HEIGHT_CROP_PERCENT, DESIRED_WIDTH_CROP_PERCENT) }
+                override fun surfaceCreated(holder: SurfaceHolder) {
+                    holder.let { drawOverlay(it, DESIRED_HEIGHT_CROP_PERCENT, DESIRED_WIDTH_CROP_PERCENT) }
                 }
 
             })
@@ -239,9 +241,9 @@ class MainFragment : Fragment() {
                     )
                 )
             }
-        viewModel.sourceText.observe(viewLifecycleOwner, Observer { srcText.text = it })
+        viewModel.sourceText.observe(viewLifecycleOwner, Observer { binding.srcText.text = it })
         viewModel.imageCropPercentages.observe(viewLifecycleOwner,
-            Observer { drawOverlay(overlay.holder, it.first, it.second) })
+            Observer { drawOverlay(binding.overlay.holder, it.first, it.second) })
 
         // Select back camera since text detection does not work with front camera
         val cameraSelector =
@@ -255,7 +257,7 @@ class MainFragment : Fragment() {
             camera = cameraProvider.bindToLifecycle(
                 this, cameraSelector, preview, imageAnalyzer
             )
-            preview.setSurfaceProvider(viewFinder.createSurfaceProvider())
+            preview.setSurfaceProvider(viewFinder.surfaceProvider)
         } catch (exc: IllegalStateException) {
             Log.e(TAG, "Use case binding failed. This must be running on main thread.", exc)
         }
