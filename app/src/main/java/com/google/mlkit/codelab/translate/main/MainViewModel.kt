@@ -26,8 +26,9 @@ import androidx.lifecycle.MutableLiveData
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.codelab.translate.main.MainFragment.Companion.DESIRED_HEIGHT_CROP_PERCENT
-import com.google.mlkit.codelab.translate.main.MainFragment.Companion.DESIRED_WIDTH_CROP_PERCENT
+import com.google.mlkit.codelab.translate.model.Page
+import com.google.mlkit.codelab.translate.model.Sentence
+import com.google.mlkit.codelab.translate.model.Word
 import com.google.mlkit.codelab.translate.util.Language
 import com.google.mlkit.codelab.translate.util.ResultOrError
 import com.google.mlkit.codelab.translate.util.SmoothedMutableLiveData
@@ -40,15 +41,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val sourceLang = MutableLiveData(Language("nl"))
     val targetLang = MutableLiveData<Language>()
-    val sourceText = SmoothedMutableLiveData<String>(SMOOTHING_DURATION)
 
-    // We set desired crop percentages to avoid having to analyze the whole image from the live
-    // camera feed. However, we are not guaranteed what aspect ratio we will get from the camera, so
-    // we use the first frame we get back from the camera to update these crop percentages based on
-    // the actual aspect ratio of images.
-    val imageCropPercentages = MutableLiveData<Pair<Int, Int>>()
-        .apply { value = Pair(DESIRED_HEIGHT_CROP_PERCENT, DESIRED_WIDTH_CROP_PERCENT) }
+    val selectedWord = MutableLiveData<Word>()
+    val selectedSentence = MutableLiveData<Sentence>()
+
+    val sourceText = SmoothedMutableLiveData<Page>(SMOOTHING_DURATION)
     val translatedText = MediatorLiveData<ResultOrError>()
+
+    val shownText = selectedSentence
+
     private val translating = MutableLiveData<Boolean>()
     val modelDownloading = SmoothedMutableLiveData<Boolean>(SMOOTHING_DURATION)
 
@@ -76,13 +77,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun translate(): Task<String> {
-        val text = sourceText.value
+        val text = shownText.value?.text
         val source = sourceLang.value
         val target = targetLang.value
         if (modelDownloading.value != false || translating.value != false) {
             return Tasks.forCanceled()
         }
-        if (source == null || target == null || text == null || text.isEmpty()) {
+        if (source == null || target == null || text.isNullOrEmpty()) {
             return Tasks.forResult("")
         }
         val sourceLangCode = TranslateLanguage.fromLanguageTag(source.code)
@@ -119,7 +120,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         translating.value = false
         // Create a translation result or error object.
         val processTranslation =
-            OnCompleteListener<String> { task ->
+            OnCompleteListener { task ->
                 if (task.isSuccessful) {
                     translatedText.value = ResultOrError(task.result, null)
                 } else {
@@ -131,7 +132,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         // Start translation if any of the following change: detected text, source lang, target lang.
-        translatedText.addSource(sourceText) { translate().addOnCompleteListener(processTranslation) }
+        translatedText.addSource(shownText) { translate().addOnCompleteListener(processTranslation) }
         translatedText.addSource(sourceLang) { translate().addOnCompleteListener(processTranslation) }
         translatedText.addSource(targetLang) { translate().addOnCompleteListener(processTranslation) }
     }

@@ -20,30 +20,26 @@ package com.google.mlkit.codelab.translate.main
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.*
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.SurfaceHolder
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.camera.core.*
-import androidx.camera.core.Camera
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toRectF
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Observer
 import com.google.mlkit.codelab.translate.R
 import com.google.mlkit.codelab.translate.analyzer.TextAnalyzer
 import com.google.mlkit.codelab.translate.databinding.MainFragmentBinding
 import com.google.mlkit.codelab.translate.util.Language
 import com.google.mlkit.codelab.translate.util.ScopedExecutor
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -73,14 +69,10 @@ class MainFragment : Fragment() {
         private const val TAG = "MainFragment"
     }
 
-    private var displayId: Int = -1
     private val viewModel: MainViewModel by viewModels()
-    private var cameraProvider: ProcessCameraProvider? = null
-    private var camera: Camera? = null
-    private var imageAnalyzer: ImageAnalysis? = null
+
     private lateinit var container: ConstraintLayout
     private lateinit var binding: MainFragmentBinding
-    private lateinit var viewFinder: PreviewView
 
     /** Blocking camera operations are performed using this executor */
     private lateinit var cameraExecutor: ExecutorService
@@ -106,23 +98,18 @@ class MainFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         container = view as ConstraintLayout
-        viewFinder = container.findViewById(R.id.viewfinder)
         binding = MainFragmentBinding.bind(view)
 
         // Initialize our background executor
         cameraExecutor = Executors.newSingleThreadExecutor()
         scopedExecutor = ScopedExecutor(cameraExecutor)
 
+        loadImage()
+
         // Request camera permissions
         if (allPermissionsGranted()) {
             // Wait for the views to be properly laid out
-            viewFinder.post {
-                // Keep track of the display in which this view is attached
-                displayId = viewFinder.display.displayId
 
-                // Set up the camera and its use cases
-                setUpCamera()
-            }
         } else {
             requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
@@ -149,8 +136,8 @@ class MainFragment : Fragment() {
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
-        viewModel.sourceLang.observe(viewLifecycleOwner, Observer { binding.srcLang.text = it.displayName })
-        viewModel.translatedText.observe(viewLifecycleOwner, Observer { resultOrError ->
+        viewModel.sourceLang.observe(viewLifecycleOwner) { binding.srcLang.text = it.displayName }
+        viewModel.translatedText.observe(viewLifecycleOwner) { resultOrError ->
             resultOrError?.let {
                 if (it.error != null) {
                     binding.translatedText.error = resultOrError.error?.localizedMessage
@@ -158,155 +145,91 @@ class MainFragment : Fragment() {
                     binding.translatedText.text = resultOrError.result
                 }
             }
-        })
-        viewModel.modelDownloading.observe(viewLifecycleOwner, Observer { isDownloading ->
+        }
+        viewModel.modelDownloading.observe(viewLifecycleOwner) { isDownloading ->
             binding.progressBar.visibility = if (isDownloading) {
                 View.VISIBLE
             } else {
                 View.INVISIBLE
             }
             binding.progressText.visibility = binding.progressBar.visibility
-        })
+        }
 
         binding.overlay.apply {
             setZOrderOnTop(true)
             holder.setFormat(PixelFormat.TRANSPARENT)
-            holder.addCallback(object : SurfaceHolder.Callback {
-                override fun surfaceChanged(
-                    holder: SurfaceHolder,
-                    format: Int,
-                    width: Int,
-                    height: Int
-                ) {
-                }
+        }
 
-                override fun surfaceDestroyed(holder: SurfaceHolder) {
-                }
+        binding.nlImage.selectedWord.observe(viewLifecycleOwner) { word ->
+            viewModel.selectedWord.value = word
+            viewModel.selectedSentence.value = word?.sentence
+        }
 
-                override fun surfaceCreated(holder: SurfaceHolder) {
-                    holder.let { drawOverlay(it, DESIRED_HEIGHT_CROP_PERCENT, DESIRED_WIDTH_CROP_PERCENT) }
-                }
-
-            })
+        viewModel.selectedSentence.observe(viewLifecycleOwner) {
+            binding.srcText.text = it.text
         }
     }
 
 
-    /** Initialize CameraX, and prepare to bind the camera use cases  */
-    private fun setUpCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
-        cameraProviderFuture.addListener(Runnable {
-
-            // CameraProvider
-            cameraProvider = cameraProviderFuture.get()
-
-            // Build and bind the camera use cases
-            bindCameraUseCases()
-        }, ContextCompat.getMainExecutor(requireContext()))
-    }
-
-    private fun bindCameraUseCases() {
-        val cameraProvider = cameraProvider
-            ?: throw IllegalStateException("Camera initialization failed.")
-
-        // Get screen metrics used to setup camera for full screen resolution
-        val metrics = DisplayMetrics().also { viewFinder.display.getRealMetrics(it) }
-        Log.d(TAG, "Screen metrics: ${metrics.widthPixels} x ${metrics.heightPixels}")
-
-        val screenAspectRatio = aspectRatio(metrics.widthPixels, metrics.heightPixels)
-        Log.d(TAG, "Preview aspect ratio: $screenAspectRatio")
-
-        val rotation = viewFinder.display.rotation
-
-        val preview = Preview.Builder()
-            .setTargetAspectRatio(screenAspectRatio)
-            .setTargetRotation(rotation)
-            .build()
-
+    private fun loadImage() {
         // Build the image analysis use case and instantiate our analyzer
-        imageAnalyzer = ImageAnalysis.Builder()
-            // We request aspect ratio but no resolution
-            .setTargetAspectRatio(screenAspectRatio)
-            .setTargetRotation(rotation)
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
-            .also {
-                it.setAnalyzer(
-                    cameraExecutor
-                    , TextAnalyzer(
-                        requireContext(),
-                        lifecycle,
-                        viewModel.sourceText,
-                        viewModel.imageCropPercentages
-                    )
-                )
-            }
-        viewModel.sourceText.observe(viewLifecycleOwner, Observer { binding.srcText.text = it })
-        viewModel.imageCropPercentages.observe(viewLifecycleOwner,
-            Observer { drawOverlay(binding.overlay.holder, it.first, it.second) })
+        TextAnalyzer(
+            requireContext(),
+            lifecycle,
+            viewModel.sourceText
+        ).recognizeText(InputImage.fromBitmap((binding.nlImage.drawable as BitmapDrawable).bitmap, 0))
 
-        // Select back camera since text detection does not work with front camera
-        val cameraSelector =
-            CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build()
-
-        try {
-            // Unbind use cases before rebinding
-            cameraProvider.unbindAll()
-
-            // Bind use cases to camera
-            camera = cameraProvider.bindToLifecycle(
-                this, cameraSelector, preview, imageAnalyzer
-            )
-            preview.setSurfaceProvider(viewFinder.surfaceProvider)
-        } catch (exc: IllegalStateException) {
-            Log.e(TAG, "Use case binding failed. This must be running on main thread.", exc)
+        viewModel.sourceText.observe(viewLifecycleOwner) {
+            binding.nlImage.setPage(it)
         }
     }
 
     private fun drawOverlay(
         holder: SurfaceHolder,
-        heightCropPercent: Int,
-        widthCropPercent: Int
+        text: Text,
     ) {
+        if (true) return
+
+        val drawingRect = Rect()
+        val nlImage = binding.nlImage
+        nlImage.getDrawingRect(drawingRect)
+
+        Log.i(TAG, "w=${nlImage.width}, h=${nlImage.height}, drawingRect=$drawingRect")
+        Log.i(TAG, "bounds=${(nlImage.drawable as BitmapDrawable).bounds}")
+
         val canvas = holder.lockCanvas()
         val bgPaint = Paint().apply {
             alpha = 140
         }
         canvas.drawPaint(bgPaint)
-        val rectPaint = Paint()
-        rectPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-        rectPaint.style = Paint.Style.FILL
-        rectPaint.color = Color.WHITE
-        val outlinePaint = Paint()
-        outlinePaint.style = Paint.Style.STROKE
-        outlinePaint.color = Color.WHITE
-        outlinePaint.strokeWidth = 4f
-        val surfaceWidth = holder.surfaceFrame.width()
-        val surfaceHeight = holder.surfaceFrame.height()
+        val linePaint = Paint()
+        linePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+        linePaint.style = Paint.Style.FILL
+        linePaint.color = Color.WHITE
+        val wordPaint = Paint()
+        wordPaint.style = Paint.Style.STROKE
+        wordPaint.color = Color.RED
+        wordPaint.strokeWidth = 1f
 
-        val cornerRadius = 25f
-        // Set rect centered in frame
-        val rectTop = surfaceHeight * heightCropPercent / 2 / 100f
-        val rectLeft = surfaceWidth * widthCropPercent / 2 / 100f
-        val rectRight = surfaceWidth * (1 - widthCropPercent / 2 / 100f)
-        val rectBottom = surfaceHeight * (1 - heightCropPercent / 2 / 100f)
-        val rect = RectF(rectLeft, rectTop, rectRight, rectBottom)
-        canvas.drawRoundRect(
-            rect, cornerRadius, cornerRadius, rectPaint
-        )
-        canvas.drawRoundRect(
-            rect, cornerRadius, cornerRadius, outlinePaint
-        )
-        val textPaint = Paint()
-        textPaint.color = Color.WHITE
-        textPaint.textSize = 50F
+        val cornerRadius = 5f
 
-        val overlayText = getString(R.string.overlay_help)
-        val textBounds = Rect()
-        textPaint.getTextBounds(overlayText, 0, overlayText.length, textBounds)
-        val textX = (surfaceWidth - textBounds.width()) / 2f
-        val textY = rectBottom + textBounds.height() + 15f // put text below rect and 15f padding
-        canvas.drawText(getString(R.string.overlay_help), textX, textY, textPaint)
+        text.textBlocks.forEach { tb ->
+            tb.lines.forEach { ln ->
+
+                val lineBoundingBox = ln.boundingBox?.toRectF()
+                if (lineBoundingBox != null) {
+                    canvas.drawRoundRect(lineBoundingBox, cornerRadius, cornerRadius, linePaint)
+                }
+
+                ln.elements.forEach { el ->
+                    val wordBoundingBox = el.boundingBox?.toRectF()
+                    if (wordBoundingBox != null) {
+                        canvas.drawRect(wordBoundingBox, wordPaint)
+                    }
+                }
+            }
+        }
+
         holder.unlockCanvasAndPost(canvas)
     }
 
@@ -340,13 +263,13 @@ class MainFragment : Fragment() {
     ) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                viewFinder.post {
-                    // Keep track of the display in which this view is attached
-                    displayId = viewFinder.display.displayId
-
-                    // Set up the camera and its use cases
-                    setUpCamera()
-                }
+//                viewFinder.post {
+//                    // Keep track of the display in which this view is attached
+//                    displayId = viewFinder.display.displayId
+//
+//                    // Set up the camera and its use cases
+//                    setUpCamera()
+//                }
             } else {
                 Toast.makeText(
                     context,

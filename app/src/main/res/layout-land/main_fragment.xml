@@ -26,18 +26,18 @@
 
     <com.google.mlkit.codelab.translate.views.ScalingImage
         android:id="@+id/nlImage"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/middle"
+        app:layout_constraintStart_toEndOf="@id/middle"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:src="@drawable/lena"
     />
 
     <SurfaceView
         android:id="@+id/overlay"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintStart_toStartOf="@id/nlImage"
         app:layout_constraintEnd_toEndOf="@id/nlImage"
@@ -48,34 +48,33 @@
         android:id="@+id/middle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintGuide_percent=".5" />
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent=".4" />
 
     <TextView
         android:id="@+id/srcLang"
         style="@style/SrcLangText"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="4dp"
         app:layout_constraintBottom_toTopOf="@+id/srcTextScrollView"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/middle"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/middle"
-        android:textIsSelectable="true"
+        app:layout_constraintTop_toTopOf="parent"
         tools:text="source lang" />
 
     <ScrollView
         android:id="@+id/srcTextScrollView"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="100dp"
         android:layout_marginBottom="4dp"
         android:fillViewport="true"
         android:scrollbars="vertical"
         app:layout_constraintBottom_toTopOf="@+id/divider"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/middle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/srcLang">
 
@@ -86,18 +85,19 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
             android:layout_marginEnd="20dp"
+            android:textIsSelectable="true"
             tools:text="source text" />
     </ScrollView>
 
     <View
         android:id="@+id/divider"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:background="?android:attr/listDivider"
         app:layout_constraintBottom_toTopOf="@+id/targetLangSelector"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/middle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/srcTextScrollView" />
 
@@ -111,13 +111,13 @@
 
     <ScrollView
         android:id="@+id/translatedTextScrollView"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_marginBottom="4dp"
         android:fillViewport="true"
         android:scrollbars="vertical"
         app:layout_constraintBottom_toTopOf="@+id/divider2"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/middle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/targetLangSelector">
 
@@ -134,7 +134,7 @@
 
     <View
         android:id="@+id/divider2"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginStart="20dp"
         android:layout_marginTop="4dp"
@@ -142,13 +142,13 @@
         android:layout_marginBottom="4dp"
         android:background="?android:attr/listDivider"
         app:layout_constraintBottom_toTopOf="@id/imageView"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/middle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/translatedTextScrollView" />
 
     <ImageView
         android:id="@+id/imageView"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="18dp"
         android:layout_marginStart="4dp"
         android:layout_marginTop="4dp"
@@ -158,7 +158,7 @@
         android:scaleType="fitCenter"
         android:src="@drawable/greyscale_regular_3x"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/middle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/divider2" />
 
@@ -177,7 +177,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:text="@string/downloading_model_files"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/middle"
         app:layout_constraintStart_toEndOf="@+id/progressBar"
         app:layout_constraintBottom_toBottomOf="@id/progressBar"
         android:gravity="center_vertical"
