@@ -121,19 +121,21 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
     val p = page ?: return
 
     val wordPaint = Paint()
+//    wordPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
     wordPaint.style = Paint.Style.STROKE
-    wordPaint.color = Color.RED
+    wordPaint.color = Color.argb(128, 255, 0, 0)
     wordPaint.strokeWidth = 2f
 
 
+    val alpha = Color.argb(96, 255, 255, 255)
     val selectedWordPaint = Paint()
     selectedWordPaint.style = Paint.Style.STROKE
-    selectedWordPaint.color = Color.GREEN
+    selectedWordPaint.color = Color.GREEN.and(alpha)
     selectedWordPaint.strokeWidth = 2f
 
     val selectedSentencePaint = Paint()
     selectedSentencePaint.style = Paint.Style.STROKE
-    selectedSentencePaint.color = Color.YELLOW
+    selectedSentencePaint.color = Color.YELLOW.and(alpha)
     selectedSentencePaint.strokeWidth = 2f
 
     val selected = selectedWord.value
@@ -143,13 +145,14 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
       s.words.forEach { w ->
         val wordBoundingBox = w.boundingBox?.toRectF()
         if (wordBoundingBox != null) {
-          canvas.drawRect(
-            wordBoundingBox, when {
-              w == selected -> selectedWordPaint
-              w.sentence == selectedSentence -> selectedSentencePaint
-              else -> wordPaint
-            }
-          )
+          val paint = when {
+            w == selected -> selectedWordPaint
+            w.sentence == selectedSentence -> selectedSentencePaint
+            else -> null
+          }
+          if (paint != null) {
+            canvas.drawRect(wordBoundingBox, paint)
+          }
         }
       }
     }
