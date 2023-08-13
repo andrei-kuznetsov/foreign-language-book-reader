@@ -17,19 +17,47 @@
 
 package com.google.mlkit.codelab.translate
 
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
+import android.widget.Toast
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import com.google.mlkit.codelab.translate.main.MainFragment
+import com.google.mlkit.codelab.translate.main.MainViewModel
 
 class MainActivity : AppCompatActivity() {
+    private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
+
+        when (intent?.action) {
+            Intent.ACTION_SEND -> {
+                handleSendImage(intent)
+            }
+        }
+
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.container, MainFragment.newInstance())
                 .commitNow()
+        }
+    }
+
+    private fun handleSendImage(intent: Intent) {
+        (intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri)?.let { uri ->
+            viewModel.bitmap.value = contentResolver.openFileDescriptor(uri, "r").use { fd ->
+                if (fd != null) {
+                    BitmapFactory.decodeFileDescriptor(fd.fileDescriptor)
+                } else {
+                    Toast.makeText(this@MainActivity, "Not file descriptor. URI: $uri", Toast.LENGTH_SHORT).show()
+                    null
+                }
+            }
         }
     }
 

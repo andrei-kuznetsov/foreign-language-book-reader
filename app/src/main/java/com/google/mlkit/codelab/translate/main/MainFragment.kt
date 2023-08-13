@@ -32,7 +32,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toRectF
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import com.google.mlkit.codelab.translate.R
 import com.google.mlkit.codelab.translate.analyzer.TextAnalyzer
 import com.google.mlkit.codelab.translate.databinding.MainFragmentBinding
@@ -69,7 +69,7 @@ class MainFragment : Fragment() {
         private const val TAG = "MainFragment"
     }
 
-    private val viewModel: MainViewModel by viewModels()
+    private val viewModel: MainViewModel by activityViewModels()
 
     private lateinit var container: ConstraintLayout
     private lateinit var binding: MainFragmentBinding
@@ -172,12 +172,16 @@ class MainFragment : Fragment() {
 
 
     private fun loadImage() {
-        // Build the image analysis use case and instantiate our analyzer
-        TextAnalyzer(
-            requireContext(),
-            lifecycle,
-            viewModel.sourceText
-        ).recognizeText(InputImage.fromBitmap((binding.nlImage.drawable as BitmapDrawable).bitmap, 0))
+        viewModel.bitmap.observe(viewLifecycleOwner) { bitmap ->
+            if (bitmap != null) {
+                binding.nlImage.setImageBitmap(bitmap)
+                TextAnalyzer(
+                    requireContext(),
+                    lifecycle,
+                    viewModel.sourceText
+                ).recognizeText(InputImage.fromBitmap(bitmap, 0))
+            }
+        }
 
         viewModel.sourceText.observe(viewLifecycleOwner) {
             binding.nlImage.setPage(it)

@@ -18,6 +18,7 @@
 package com.google.mlkit.codelab.translate.main
 
 import android.app.Application
+import android.graphics.Bitmap
 import android.os.Handler
 import android.util.LruCache
 import androidx.lifecycle.AndroidViewModel
@@ -39,6 +40,7 @@ import com.google.mlkit.nl.translate.TranslatorOptions
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    val bitmap = MutableLiveData<Bitmap?>()
     val sourceLang = MutableLiveData(Language("nl"))
     val targetLang = MutableLiveData<Language>()
 
