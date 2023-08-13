@@ -1,10 +1,7 @@
 package com.google.mlkit.codelab.translate.views
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Matrix
-import android.graphics.Paint
+import android.graphics.*
 import android.util.AttributeSet
 import android.util.Log
 import android.view.GestureDetector
@@ -16,6 +13,7 @@ import androidx.core.graphics.translationMatrix
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.google.mlkit.codelab.translate.model.Page
+import com.google.mlkit.codelab.translate.model.Sentence
 import com.google.mlkit.codelab.translate.model.Word
 
 
@@ -26,7 +24,10 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
 
   private var page: Page? = null
   private val _selectedWord: MutableLiveData<Word?> = MutableLiveData()
-  val selectedWord: LiveData<Word?> get() = _selectedWord
+  private val _selectedSentence: MutableLiveData<Sentence?> = MutableLiveData()
+
+  val selectedWord: LiveData<Word?> = _selectedWord
+  val selectedSentence: LiveData<Sentence?> = _selectedSentence
 
   class ScalePanListener internal constructor(private var imageView: ScalingImage) :
     ScaleGestureDetector.OnScaleGestureListener, GestureDetector.SimpleOnGestureListener() {
@@ -59,12 +60,22 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
       return true
     }
 
-    override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+    private fun screenToPictureCoords(e: MotionEvent): PointF {
       val point = floatArrayOf(e.x, e.y)
-      val invertedMatring = getInvertedTransformMatrix()
-      invertedMatring.mapPoints(point)
-      imageView.onClicked(point[0], point[1])
+      val invertedMatrix = getInvertedTransformMatrix()
+      invertedMatrix.mapPoints(point)
+      return PointF(point[0], point[1])
+    }
+
+    override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+      val point = screenToPictureCoords(e)
+      imageView.onClicked(point.x, point.y)
       return true
+    }
+
+    override fun onLongPress(e: MotionEvent) {
+      val point = screenToPictureCoords(e)
+      imageView.onLongClicked(point.x, point.y)
     }
 
     private fun getTransformMatrix(): Matrix {
@@ -80,7 +91,17 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
     val oldWord = selectedWord.value
     val newWord = page?.findWord(x, y)
     if (newWord !== oldWord) {
+      _selectedSentence.value = newWord?.sentence
       _selectedWord.value = newWord
+      invalidate()
+    }
+  }
+
+  private fun onLongClicked(x: Float, y: Float) {
+    val oldSentence = _selectedSentence.value
+    val newSentence = page?.findWord(x, y)?.sentence
+    if (newSentence !== oldSentence) {
+      _selectedSentence.value = newSentence
       invalidate()
     }
   }
@@ -139,7 +160,7 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
     selectedSentencePaint.strokeWidth = 2f
 
     val selected = selectedWord.value
-    val selectedSentence = selected?.sentence
+    val selectedSentence = selectedSentence.value
 
     p.sentences.forEach { s ->
       s.words.forEach { w ->

@@ -155,9 +155,11 @@ class MainFragment : Fragment() {
             holder.setFormat(PixelFormat.TRANSPARENT)
         }
 
+        binding.nlImage.selectedSentence.observe(viewLifecycleOwner) { sentence ->
+            viewModel.selectedSentence.value = sentence
+        }
         binding.nlImage.selectedWord.observe(viewLifecycleOwner) { word ->
             viewModel.selectedWord.value = word
-            viewModel.selectedSentence.value = word?.sentence
             if (word != null) {
                 val i = Intent()
                     .setAction(Intent.ACTION_TRANSLATE)
