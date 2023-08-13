@@ -166,7 +166,7 @@ class MainFragment : Fragment() {
         }
 
         viewModel.selectedSentence.observe(viewLifecycleOwner) {
-            binding.srcText.text = it.text
+            binding.srcText.text = it?.text
         }
     }
 

@@ -44,8 +44,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val sourceLang = MutableLiveData(Language("nl"))
     val targetLang = MutableLiveData<Language>()
 
-    val selectedWord = MutableLiveData<Word>()
-    val selectedSentence = MutableLiveData<Sentence>()
+    val selectedWord = MutableLiveData<Word?>()
+    val selectedSentence = MutableLiveData<Sentence?>()
 
     val sourceText = SmoothedMutableLiveData<Page>(SMOOTHING_DURATION)
     val translatedText = MediatorLiveData<ResultOrError>()
