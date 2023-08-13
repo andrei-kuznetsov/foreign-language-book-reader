@@ -41,7 +41,7 @@ import com.google.mlkit.nl.translate.TranslatorOptions
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val bitmap = MutableLiveData<Bitmap?>()
-    val sourceLang = MutableLiveData(Language("nl"))
+    val sourceLang = Language("nl")
     val targetLang = MutableLiveData<Language>()
 
     val selectedWord = MutableLiveData<Word?>()
@@ -80,7 +80,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun translate(): Task<String> {
         val text = shownText.value?.text
-        val source = sourceLang.value
+        val source = sourceLang
         val target = targetLang.value
         if (modelDownloading.value != false || translating.value != false) {
             return Tasks.forCanceled()
@@ -135,7 +135,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         // Start translation if any of the following change: detected text, source lang, target lang.
         translatedText.addSource(shownText) { translate().addOnCompleteListener(processTranslation) }
-        translatedText.addSource(sourceLang) { translate().addOnCompleteListener(processTranslation) }
         translatedText.addSource(targetLang) { translate().addOnCompleteListener(processTranslation) }
     }
 

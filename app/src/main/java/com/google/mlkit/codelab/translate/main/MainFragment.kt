@@ -18,19 +18,18 @@
 package com.google.mlkit.codelab.translate.main
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
+import android.graphics.PixelFormat
 import android.os.Bundle
-import android.util.Log
-import android.view.*
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
-import androidx.camera.core.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toRectF
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.google.mlkit.codelab.translate.R
@@ -39,13 +38,9 @@ import com.google.mlkit.codelab.translate.databinding.MainFragmentBinding
 import com.google.mlkit.codelab.translate.util.Language
 import com.google.mlkit.codelab.translate.util.ScopedExecutor
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.Text
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.math.abs
-import kotlin.math.ln
-import kotlin.math.max
-import kotlin.math.min
+
 
 class MainFragment : Fragment() {
 
@@ -136,7 +131,7 @@ class MainFragment : Fragment() {
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
-        viewModel.sourceLang.observe(viewLifecycleOwner) { binding.srcLang.text = it.displayName }
+        binding.srcLang.text = viewModel.sourceLang.displayName
         viewModel.translatedText.observe(viewLifecycleOwner) { resultOrError ->
             resultOrError?.let {
                 if (it.error != null) {
@@ -163,6 +158,23 @@ class MainFragment : Fragment() {
         binding.nlImage.selectedWord.observe(viewLifecycleOwner) { word ->
             viewModel.selectedWord.value = word
             viewModel.selectedSentence.value = word?.sentence
+            if (word != null) {
+                val i = Intent()
+                    .setAction(Intent.ACTION_TRANSLATE)
+                    .putExtra(Intent.EXTRA_TEXT, word.text)
+                    .putExtra("key_text_input", word.text)
+                    .putExtra("key_language_from", viewModel.sourceLang.code)
+
+                try {
+                    startActivity(i)
+                } catch (e: Throwable) {
+                    Toast.makeText(
+                        requireContext(),
+                        e.toString(),
+                        Toast.LENGTH_SHORT
+                    ).show();
+                }
+            }
         }
 
         viewModel.selectedSentence.observe(viewLifecycleOwner) {
@@ -186,76 +198,6 @@ class MainFragment : Fragment() {
         viewModel.sourceText.observe(viewLifecycleOwner) {
             binding.nlImage.setPage(it)
         }
-    }
-
-    private fun drawOverlay(
-        holder: SurfaceHolder,
-        text: Text,
-    ) {
-        if (true) return
-
-        val drawingRect = Rect()
-        val nlImage = binding.nlImage
-        nlImage.getDrawingRect(drawingRect)
-
-        Log.i(TAG, "w=${nlImage.width}, h=${nlImage.height}, drawingRect=$drawingRect")
-        Log.i(TAG, "bounds=${(nlImage.drawable as BitmapDrawable).bounds}")
-
-        val canvas = holder.lockCanvas()
-        val bgPaint = Paint().apply {
-            alpha = 140
-        }
-        canvas.drawPaint(bgPaint)
-        val linePaint = Paint()
-        linePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-        linePaint.style = Paint.Style.FILL
-        linePaint.color = Color.WHITE
-        val wordPaint = Paint()
-        wordPaint.style = Paint.Style.STROKE
-        wordPaint.color = Color.RED
-        wordPaint.strokeWidth = 1f
-
-        val cornerRadius = 5f
-
-        text.textBlocks.forEach { tb ->
-            tb.lines.forEach { ln ->
-
-                val lineBoundingBox = ln.boundingBox?.toRectF()
-                if (lineBoundingBox != null) {
-                    canvas.drawRoundRect(lineBoundingBox, cornerRadius, cornerRadius, linePaint)
-                }
-
-                ln.elements.forEach { el ->
-                    val wordBoundingBox = el.boundingBox?.toRectF()
-                    if (wordBoundingBox != null) {
-                        canvas.drawRect(wordBoundingBox, wordPaint)
-                    }
-                }
-            }
-        }
-
-        holder.unlockCanvasAndPost(canvas)
-    }
-
-    /**
-     *  [androidx.camera.core.ImageAnalysisConfig] requires enum value of
-     *  [androidx.camera.core.AspectRatio]. Currently it has values of 4:3 & 16:9.
-     *
-     *  Detecting the most suitable ratio for dimensions provided in @params by comparing absolute
-     *  of preview ratio to one of the provided values.
-     *
-     *  @param width - preview width
-     *  @param height - preview height
-     *  @return suitable aspect ratio
-     */
-    private fun aspectRatio(width: Int, height: Int): Int {
-        val previewRatio = ln(max(width, height).toDouble() / min(width, height))
-        if (abs(previewRatio - ln(RATIO_4_3_VALUE))
-            <= abs(previewRatio - ln(RATIO_16_9_VALUE))
-        ) {
-            return AspectRatio.RATIO_4_3
-        }
-        return AspectRatio.RATIO_16_9
     }
 
     /**

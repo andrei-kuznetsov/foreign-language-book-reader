@@ -39,6 +39,10 @@ class MainActivity : AppCompatActivity() {
             Intent.ACTION_SEND -> {
                 handleSendImage(intent)
             }
+            else -> {
+                // for debugging
+                viewModel.bitmap.value = BitmapFactory.decodeResource(resources, R.drawable.lena)
+            }
         }
 
         if (savedInstanceState == null) {
