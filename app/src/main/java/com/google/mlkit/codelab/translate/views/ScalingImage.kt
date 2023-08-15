@@ -2,12 +2,12 @@ package com.google.mlkit.codelab.translate.views
 
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
 import android.util.AttributeSet
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
+import android.view.View
 import androidx.core.graphics.scaleMatrix
 import androidx.core.graphics.toRectF
 import androidx.core.graphics.translationMatrix
@@ -18,10 +18,21 @@ import com.google.mlkit.codelab.translate.model.Sentence
 import com.google.mlkit.codelab.translate.model.Word
 
 
-class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
+class ScalingImage : View {
   companion object {
     const val TAG = "ScalingImage"
   }
+
+  private var bitmap: Bitmap? = null
+    set(value) {
+      field = value
+      invalidate()
+    }
+  private var imageMatrix: Matrix = scaleMatrix(1f, 1f)
+    set(value) {
+      field = value
+      invalidate()
+    }
 
   private var page: Page? = null
   private val _selectedWord: MutableLiveData<Word?> = MutableLiveData()
@@ -116,17 +127,13 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
   constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
   constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
-  init {
-    scaleType = ScaleType.MATRIX
-  }
-
   fun setPage(page: Page?) {
     this.page = page
     invalidate()
   }
 
-  override fun setImageBitmap(bm: Bitmap?) {
-    super.setImageBitmap(bm)
+  fun setImageBitmap(bitmap: Bitmap?) {
+    this.bitmap = bitmap
     adjustScale(width)
   }
 
@@ -136,7 +143,8 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
   }
 
   private fun adjustScale(viewportWidth: Int) {
-    val scaleX = viewportWidth.toFloat() / ((drawable as? BitmapDrawable)?.bitmap?.width ?: 1)
+    val scaleX = bitmap?.width?.let { w -> viewportWidth.toFloat() / w } ?: 1f
+
     scalePanListener.minScale = scaleX
     scalePanListener.scaleFactor = scaleX
     imageMatrix = scaleMatrix(scaleX, scaleX)
@@ -149,12 +157,15 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
   }
 
   override fun onDraw(canvas: Canvas) {
-    super.onDraw(canvas)
-
-    Log.i(TAG, imageMatrix.toString())
+    val notNullBitmap = bitmap ?: return
+    val saveCount = canvas.saveCount
+    canvas.save()
 
     canvas.setMatrix(imageMatrix)
+    canvas.drawBitmap(notNullBitmap, 0f, 0f, null)
     drawText(canvas)
+
+    canvas.restoreToCount(saveCount)
   }
 
   private fun drawText(canvas: Canvas) {
