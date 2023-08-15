@@ -3,7 +3,6 @@ package com.google.mlkit.codelab.translate.views
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -23,11 +22,15 @@ class ScalingImage : View {
     const val TAG = "ScalingImage"
   }
 
-  private var bitmap: Bitmap? = null
+  var bitmap: Bitmap? = null
     set(value) {
       field = value
-      invalidate()
+      scalePanListener.unscaledImageWidth = bitmap?.width?.toFloat() ?: 0.0f
+      scalePanListener.unscaledImageHeight = bitmap?.height?.toFloat() ?: 0.0f
+      adjustScale(width.toFloat(), height.toFloat())
+      scalePanListener.scaleFactor = scalePanListener.minScale
     }
+
   private var imageMatrix: Matrix = scaleMatrix(1f, 1f)
     set(value) {
       field = value
@@ -44,14 +47,20 @@ class ScalingImage : View {
   class ScalePanListener internal constructor(private var imageView: ScalingImage) :
     ScaleGestureDetector.OnScaleGestureListener, GestureDetector.SimpleOnGestureListener() {
     var minScale: Float = 1.0f
+    val maxScale: Float = 10.0f
     var scaleFactor = 1.0f
+
+    var minScaledImageWidth: Float = 0.0f
+    var unscaledImageWidth: Float = 0.0f
+
+    var minScaledImageHeight: Float = 0.0f
+    var unscaledImageHeight: Float = 0.0f
+
     private var distanceX = 0f
     private var distanceY = 0f
 
     override fun onScale(scaleGestureDetector: ScaleGestureDetector): Boolean {
       scaleFactor *= scaleGestureDetector.scaleFactor
-      Log.i(TAG, "Scale factor: ${scaleGestureDetector.scaleFactor}, scaleFactor ${scaleFactor}")
-      scaleFactor = scaleFactor.coerceIn(minScale, 10.0f)
       imageView.imageMatrix = getTransformMatrix()
       return true
     }
@@ -63,14 +72,18 @@ class ScalingImage : View {
     override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float): Boolean {
       distanceY -= dy
       distanceX -= dx
-
-      distanceX = distanceX.coerceAtMost(0f)
-      distanceY = distanceY.coerceAtMost(0f)
-
-      Log.i(TAG, "onScroll: dx=$dx, dy=$dy, distanceX=$distanceX, distanceY=$distanceY")
-
       imageView.imageMatrix = getTransformMatrix()
       return true
+    }
+
+    private fun fixBounds() {
+      scaleFactor = scaleFactor.coerceIn(minScale, maxScale)
+
+      val minDistanceX = (minScaledImageWidth - unscaledImageWidth * scaleFactor).coerceAtMost(0.0f)
+      val minDistanceY = (minScaledImageHeight - unscaledImageHeight * scaleFactor).coerceAtMost(0.0f)
+
+      distanceX = distanceX.coerceIn(minDistanceX, 0.0f)
+      distanceY = distanceY.coerceIn(minDistanceY, 0.0f)
     }
 
     private fun screenToPictureCoords(e: MotionEvent): PointF {
@@ -91,11 +104,13 @@ class ScalingImage : View {
       imageView.onLongClicked(point.x, point.y)
     }
 
-    private fun getTransformMatrix(): Matrix {
+    fun getTransformMatrix(): Matrix {
+      fixBounds()
       return scaleMatrix(scaleFactor, scaleFactor).also { it.postTranslate(distanceX, distanceY) }
     }
 
     private fun getInvertedTransformMatrix(): Matrix {
+      fixBounds()
       return translationMatrix(-distanceX, -distanceY).also { it.postScale(1f / scaleFactor, 1f / scaleFactor) }
     }
   }
@@ -132,22 +147,25 @@ class ScalingImage : View {
     invalidate()
   }
 
-  fun setImageBitmap(bitmap: Bitmap?) {
-    this.bitmap = bitmap
-    adjustScale(width)
-  }
-
   override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
     super.onLayout(changed, left, top, right, bottom)
-    adjustScale((right - left))
+    adjustScale((right - left).toFloat(), (bottom - top).toFloat())
   }
 
-  private fun adjustScale(viewportWidth: Int) {
-    val scaleX = bitmap?.width?.let { w -> viewportWidth.toFloat() / w } ?: 1f
+  private fun adjustScale(viewportWidth: Float, viewportHeight: Float) {
+    val notNullBitmap = bitmap ?: return
+
+    val scaleX = viewportWidth / notNullBitmap.width
 
     scalePanListener.minScale = scaleX
-    scalePanListener.scaleFactor = scaleX
-    imageMatrix = scaleMatrix(scaleX, scaleX)
+
+    scalePanListener.unscaledImageWidth = notNullBitmap.width.toFloat()
+    scalePanListener.minScaledImageWidth = viewportWidth
+
+    scalePanListener.unscaledImageHeight = notNullBitmap.height.toFloat()
+    scalePanListener.minScaledImageHeight = viewportHeight
+
+    imageMatrix = scalePanListener.getTransformMatrix()
   }
 
   override fun onTouchEvent(event: MotionEvent): Boolean {

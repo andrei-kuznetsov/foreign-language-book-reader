@@ -188,7 +188,7 @@ class MainFragment : Fragment() {
     private fun loadImage() {
         viewModel.bitmap.observe(viewLifecycleOwner) { bitmap ->
             if (bitmap != null) {
-                binding.nlImage.setImageBitmap(bitmap)
+                binding.nlImage.bitmap = bitmap
                 TextAnalyzer(
                     requireContext(),
                     lifecycle,
