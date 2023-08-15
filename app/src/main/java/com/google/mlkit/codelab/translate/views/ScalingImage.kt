@@ -2,6 +2,7 @@ package com.google.mlkit.codelab.translate.views
 
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.BitmapDrawable
 import android.util.AttributeSet
 import android.util.Log
 import android.view.GestureDetector
@@ -31,14 +32,15 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
 
   class ScalePanListener internal constructor(private var imageView: ScalingImage) :
     ScaleGestureDetector.OnScaleGestureListener, GestureDetector.SimpleOnGestureListener() {
-    private var scaleFactor = 1.0f
+    var minScale: Float = 1.0f
+    var scaleFactor = 1.0f
     private var distanceX = 0f
     private var distanceY = 0f
 
     override fun onScale(scaleGestureDetector: ScaleGestureDetector): Boolean {
       scaleFactor *= scaleGestureDetector.scaleFactor
       Log.i(TAG, "Scale factor: ${scaleGestureDetector.scaleFactor}, scaleFactor ${scaleFactor}")
-      scaleFactor = scaleFactor.coerceIn(0.1f, 10.0f)
+      scaleFactor = scaleFactor.coerceIn(minScale, 10.0f)
       imageView.imageMatrix = getTransformMatrix()
       return true
     }
@@ -121,6 +123,23 @@ class ScalingImage : androidx.appcompat.widget.AppCompatImageView {
   fun setPage(page: Page?) {
     this.page = page
     invalidate()
+  }
+
+  override fun setImageBitmap(bm: Bitmap?) {
+    super.setImageBitmap(bm)
+    adjustScale(width)
+  }
+
+  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    super.onLayout(changed, left, top, right, bottom)
+    adjustScale((right - left))
+  }
+
+  private fun adjustScale(viewportWidth: Int) {
+    val scaleX = viewportWidth.toFloat() / ((drawable as? BitmapDrawable)?.bitmap?.width ?: 1)
+    scalePanListener.minScale = scaleX
+    scalePanListener.scaleFactor = scaleX
+    imageMatrix = scaleMatrix(scaleX, scaleX)
   }
 
   override fun onTouchEvent(event: MotionEvent): Boolean {
