@@ -161,26 +161,35 @@ class MainFragment : Fragment() {
         binding.nlImage.selectedWord.observe(viewLifecycleOwner) { word ->
             viewModel.selectedWord.value = word
             if (word != null) {
-                val i = Intent()
-                    .setAction(Intent.ACTION_TRANSLATE)
-                    .putExtra(Intent.EXTRA_TEXT, word.text)
-                    .putExtra("key_text_input", word.text)
-                    .putExtra("key_language_from", viewModel.sourceLang.code)
-
-                try {
-                    startActivity(i)
-                } catch (e: Throwable) {
-                    Toast.makeText(
-                        requireContext(),
-                        e.toString(),
-                        Toast.LENGTH_SHORT
-                    ).show();
-                }
+                translateWithGoogleTranslateApp(word.text)
+            }
+        }
+        binding.translateSentence.setOnClickListener {
+            viewModel.shownText.value?.text?.let { text ->
+                translateWithGoogleTranslateApp(text)
             }
         }
 
         viewModel.selectedSentence.observe(viewLifecycleOwner) {
             binding.srcText.text = it?.text
+        }
+    }
+
+    private fun translateWithGoogleTranslateApp(text: String) {
+        val i = Intent()
+            .setAction(Intent.ACTION_TRANSLATE)
+            .putExtra(Intent.EXTRA_TEXT, text)
+            .putExtra("key_text_input", text)
+            .putExtra("key_language_from", viewModel.sourceLang.code)
+
+        try {
+            startActivity(i)
+        } catch (e: Throwable) {
+            Toast.makeText(
+                requireContext(),
+                e.toString(),
+                Toast.LENGTH_SHORT
+            ).show();
         }
     }
 

@@ -67,6 +67,15 @@
         android:textIsSelectable="true"
         tools:text="source lang" />
 
+    <ImageButton
+            android:id="@+id/translateSentence"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            app:layout_constraintRight_toRightOf="@id/srcLang"
+            app:layout_constraintTop_toTopOf="@id/srcLang"
+            android:src="@drawable/translate"
+            android:contentDescription="@string/translate_the_sentence"/>
+
     <ScrollView
         android:id="@+id/srcTextScrollView"
         android:layout_width="match_parent"
