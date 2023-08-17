@@ -40,7 +40,7 @@ class TextAnalyzer(
     private val lifecycle: Lifecycle,
     private val result: MutableLiveData<Page>,
 ) {
-
+    private val endOfSentence = setOf('.', '!', '?', '…')
     private val detector = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     init {
@@ -81,8 +81,8 @@ class TextAnalyzer(
         var currentSentence: Sentence? = null
         for (w in elementList) {
             currentSentence = currentSentence ?: Sentence()
-            currentSentence.addWord(w.boundingBox, w.text)
-            if (w.text.endsWith(".")) {
+            val addedWord = currentSentence.addWord(w.boundingBox, w.text)
+            if (addedWord.punctuation?.any { endOfSentence.contains(it) } == true) {
                 sentences.add(currentSentence)
                 currentSentence = null
             }

@@ -8,8 +8,10 @@ class Sentence {
   private val _words: MutableList<Word> = mutableListOf()
   val words: List<Word> get() = _words
 
-  fun addWord(boundingBox: Rect?, text: String) {
-    _words.add(Word(this, boundingBox, text))
+  fun addWord(boundingBox: Rect?, text: String): Word {
+    val word = Word.fromText(this, boundingBox, text)
+    _words.add(word)
+    return word
   }
 
   override fun toString(): String = text
