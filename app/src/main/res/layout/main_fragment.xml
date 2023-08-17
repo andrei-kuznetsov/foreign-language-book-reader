@@ -30,26 +30,10 @@
         android:layout_height="0dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/middle"
+        app:layout_constraintBottom_toTopOf="@id/srcLang"
         app:layout_constraintTop_toTopOf="parent"
         android:src="@drawable/lena"
     />
-
-    <SurfaceView
-        android:id="@+id/overlay"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintStart_toStartOf="@id/nlImage"
-        app:layout_constraintEnd_toEndOf="@id/nlImage"
-        app:layout_constraintBottom_toBottomOf="@id/nlImage"
-        app:layout_constraintTop_toTopOf="@id/nlImage" />
-
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/middle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintGuide_percent=".5" />
 
     <TextView
         android:id="@+id/srcLang"
@@ -63,7 +47,7 @@
         app:layout_constraintBottom_toTopOf="@+id/srcTextScrollView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/middle"
+        app:layout_constraintTop_toBottomOf="@id/nlImage"
         android:textIsSelectable="true"
         tools:text="source lang" />
 

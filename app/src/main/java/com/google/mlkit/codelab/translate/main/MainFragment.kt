@@ -150,11 +150,6 @@ class MainFragment : Fragment() {
             binding.progressText.visibility = binding.progressBar.visibility
         }
 
-        binding.overlay.apply {
-            setZOrderOnTop(true)
-            holder.setFormat(PixelFormat.TRANSPARENT)
-        }
-
         binding.nlImage.selectedSentence.observe(viewLifecycleOwner) { sentence ->
             viewModel.selectedSentence.value = sentence
         }
