@@ -41,7 +41,10 @@ class MainActivity : AppCompatActivity() {
             }
             else -> {
                 // for debugging
-                viewModel.bitmap.value = BitmapFactory.decodeResource(resources, R.drawable.lena)
+                val bitmap = BitmapFactory.decodeResource(resources, R.drawable.lena)
+//                val kernelSize = (bitmap.width / 50) * 2 + 1
+//                val wb = GaussianBinarization().getBinaryImage(bitmap, kernelSize, 30)
+                viewModel.bitmap.value = bitmap
             }
         }
 
