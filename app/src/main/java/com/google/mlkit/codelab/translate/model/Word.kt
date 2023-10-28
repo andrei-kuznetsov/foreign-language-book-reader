@@ -4,7 +4,7 @@ import android.graphics.Rect
 
 class Word(
   val sentence: Sentence,
-  val boundingBox: Rect?,
+  val boundingBoxes: List<Rect>,
   val word: String,
   val punctuation: String?
 ) {
@@ -12,9 +12,9 @@ class Word(
   override fun toString(): String = text
 
   companion object {
-    fun fromText(sentence: Sentence, boundingBox: Rect?, text: String): Word {
+    fun fromText(sentence: Sentence, boundingBoxes: List<Rect>, text: String): Word {
       val (word, punctuation) = extractPunctuation(text)
-      return Word(sentence, boundingBox, word, punctuation.ifBlank { null })
+      return Word(sentence, boundingBoxes, word, punctuation.ifBlank { null })
     }
 
     private fun extractPunctuation(text: String): Pair<String, String> {

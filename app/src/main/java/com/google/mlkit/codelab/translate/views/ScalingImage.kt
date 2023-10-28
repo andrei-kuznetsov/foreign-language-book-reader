@@ -8,7 +8,6 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import androidx.core.graphics.scaleMatrix
-import androidx.core.graphics.toRectF
 import androidx.core.graphics.translationMatrix
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -212,8 +211,7 @@ class ScalingImage : View {
 
     p.sentences.forEach { s ->
       s.words.forEach { w ->
-        val wordBoundingBox = w.boundingBox?.toRectF()
-        if (wordBoundingBox != null) {
+        w.boundingBoxes.forEach { wordBoundingBox ->
           val paint = when {
             w == selected -> selectedWordPaint
             w.sentence == selectedSentence -> selectedSentencePaint

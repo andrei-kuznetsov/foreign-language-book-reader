@@ -66,22 +66,60 @@ class TextAnalyzer(
             }
     }
 
-    private fun prepareRecognizedText(text: Text?): Page? {
-        if (text == null) return null
+    private data class TextElement(
+        val element: Text.Element,
+        val line: Text.Line,
+        val posInLine: Int,
+        val maxPosInLine: Int,
+    ) {
+        fun endsWithHyphenation(): Boolean {
+            return textWithoutHyphenation() != element.text
+        }
 
-        val elementList = mutableListOf<Text.Element>()
-
-        text.textBlocks.forEach { tb ->
-            tb.lines.forEach { ln ->
-                elementList.addAll(ln.elements)
+        fun textWithoutHyphenation(): String {
+            return if (element.text.endsWith("-")
+                || (posInLine == maxPosInLine && line.text.endsWith("-"))
+            ) {
+                element.text.dropLast(1).trim()
+            } else {
+                element.text.trim()
             }
         }
 
+        fun getBoundingBox() = element.boundingBox
+    }
+
+    private fun prepareRecognizedText(text: Text?): Page? {
+        if (text == null) return null
+
+        val elementList: List<TextElement> = text.textBlocks
+            .flatMap(Text.TextBlock::getLines)
+            .map { ln ->
+                val maxPosInLine = ln.elements.size - 1
+                ln.elements.mapIndexed { idx, el ->
+                    TextElement(el, ln, idx, maxPosInLine)
+                }
+            }
+            .flatten()
+
         val sentences = mutableListOf<Sentence>()
         var currentSentence: Sentence? = null
+        val currentWordParts: MutableList<TextElement> = mutableListOf()
         for (w in elementList) {
             currentSentence = currentSentence ?: Sentence()
-            val addedWord = currentSentence.addWord(w.boundingBox, w.text)
+            currentWordParts.add(w)
+            if (w.endsWithHyphenation()) {
+                continue
+            }
+
+            val wordText = currentWordParts
+                .map(TextElement::textWithoutHyphenation)
+                .reduce(String::plus)
+            val boxes = currentWordParts
+                .mapNotNull(TextElement::getBoundingBox)
+
+            currentWordParts.clear()
+            val addedWord = currentSentence.addWord(boxes, wordText)
             if (addedWord.punctuation?.any { endOfSentence.contains(it) } == true) {
                 sentences.add(currentSentence)
                 currentSentence = null

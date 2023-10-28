@@ -6,7 +6,7 @@ data class Page(val sentences: List<Sentence>) {
     val xint = x.toInt()
     val yint = y.toInt()
     for (s in sentences) {
-      foundWord = s.words.find { word -> word.boundingBox?.contains(xint, yint) ?: false }
+      foundWord = s.words.find { word -> word.boundingBoxes.any { it.contains(xint, yint) } }
       if (foundWord != null) break
     }
     return foundWord
